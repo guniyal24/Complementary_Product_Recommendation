@@ -5,17 +5,12 @@ import pandas as pd
 from tqdm import tqdm
 from sentence_transformers import SentenceTransformer
 
-def process_and_embed_product_data_in_memory(
+def generate_product_embeddings_in_memory(
     merchant_id: str,
-    raw_json_input_path='./sns.products.json',
-    output_dir='./Data'
-):
-    print(f"--- Starting In-Memory Product Data Processing and Embedding Generation for Merchant: {merchant_id} ---")
+    raw_json_input_path='./sns.products.json'
+) -> pd.DataFrame:
+    print(f"--- Starting In-Memory Product Data Processing for Merchant: {merchant_id} ---")
     start_time = time.time()
-
-    embedding_output_path = os.path.join(output_dir, f'{merchant_id}_embeddings.pkl')
-
-    os.makedirs(output_dir, exist_ok=True)
 
     print(f"\nStep 0: Filtering JSON data by merchant_id '{merchant_id}' (in memory)...")
     try:
@@ -27,19 +22,19 @@ def process_and_embed_product_data_in_memory(
 
         if not filtered_items:
             print(f"No items found for merchant_id '{merchant_id}' after filtering. Exiting process.")
-            return
+            return None
 
         print(f"Found {len(filtered_items)} record(s) with merchant_id: {merchant_id}")
 
     except FileNotFoundError:
         print(f"Error: The raw input file '{raw_json_input_path}' was not found.")
-        return
+        return None
     except json.JSONDecodeError:
         print(f"Error: The file '{raw_json_input_path}' contains invalid JSON.")
-        return
+        return None
     except Exception as e:
         print(f"An unexpected error occurred during JSON filtering: {str(e)}")
-        return
+        return None
 
     print(f"\nStep 1: Creating DataFrame and preprocessing data for merchant '{merchant_id}'...")
     try:
@@ -65,7 +60,7 @@ def process_and_embed_product_data_in_memory(
 
     except Exception as e:
         print(f"An unexpected error occurred during DataFrame creation or preprocessing: {str(e)}")
-        return
+        return None
 
     print("\nStep 2: Loading SentenceTransformer model and generating embeddings...")
     try:
@@ -92,20 +87,19 @@ def process_and_embed_product_data_in_memory(
 
     except Exception as e:
         print(f"An unexpected error occurred during embedding generation: {str(e)}")
-        return
-
-    print(f"\nStep 3: Saving embeddings to {embedding_output_path}...")
-    try:
-        embedding_df.to_pickle(embedding_output_path)
-        print(f"Embeddings successfully saved to {embedding_output_path}")
-    except Exception as e:
-        print(f"An unexpected error occurred while saving embeddings: {str(e)}")
-        return
+        return None
 
     end_time = time.time()
-    elapsed_time = time.time() - start_time
-    print(f"\n--- Full Workflow Completed for Merchant {merchant_id} in {elapsed_time:.2f} seconds ---")
+    elapsed_time = end_time - start_time
+    print(f"\n--- In-Memory Processing Completed for Merchant {merchant_id} in {elapsed_time:.2f} seconds ---")
+
+    return embedding_df
 
 if __name__ == "__main__":
     target_merchant_id = '22b725f2-f1bb-411f-902d-554905352af4'
-    process_and_embed_product_data_in_memory(merchant_id=target_merchant_id)
+    embeddings_df = generate_product_embeddings_in_memory(merchant_id=target_merchant_id)
+
+    if embeddings_df is not None:
+        print(f"\nSuccessfully generated embeddings DataFrame with {len(embeddings_df)} rows.")
+    else:
+        print("\nFailed to generate embeddings DataFrame.")
